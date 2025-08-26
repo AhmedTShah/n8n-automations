@@ -1,0 +1,316 @@
+{
+  "name": "spotify",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 8 * * MON"
+            }
+          ]
+        }
+      },
+      "id": "205d7859-972b-44db-8820-36857c28c18c",
+      "name": "CRON",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -1488,
+        -16
+      ],
+      "notesInFlow": true,
+      "typeVersion": 1.1,
+      "notes": "Every Monday @ 8:30am"
+    },
+    {
+      "parameters": {
+        "resource": "playlist",
+        "operation": "getUserPlaylists",
+        "returnAll": true
+      },
+      "id": "d8407c75-27e4-42ce-a79b-b439f881cf9c",
+      "name": "Get User's Playlists",
+      "type": "n8n-nodes-base.spotify",
+      "position": [
+        -1248,
+        -16
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "spotifyOAuth2Api": {
+          "id": "qkUTAyNoAwOhiPwI",
+          "name": "Spotify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.name }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "Discover Weekly",
+              "outputKey": "disc"
+            },
+            {
+              "value2": "Discover Weekly Archive",
+              "outputKey": "arch"
+            }
+          ]
+        },
+        "fallbackOutput": 1
+      },
+      "id": "6fca6cb4-6b1e-4166-bdb2-1610546d0bd1",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        -1024,
+        -16
+      ],
+      "notesInFlow": true,
+      "typeVersion": 2,
+      "notes": "Find Discover and Archive playlist by name"
+    },
+    {
+      "parameters": {
+        "resource": "playlist",
+        "operation": "getTracks",
+        "id": "={{ $json.uri }}",
+        "returnAll": true
+      },
+      "id": "e46511ee-82a3-4570-b4cc-f5933e195a59",
+      "name": "Get Discover Tracks",
+      "type": "n8n-nodes-base.spotify",
+      "position": [
+        -720,
+        -128
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "spotifyOAuth2Api": {
+          "id": "qkUTAyNoAwOhiPwI",
+          "name": "Spotify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlist",
+        "operation": "getTracks",
+        "id": "={{ $json.uri }}",
+        "returnAll": true
+      },
+      "id": "4bcebbda-6da0-44bd-8a84-90691cb00602",
+      "name": "Get Archive Tracks",
+      "type": "n8n-nodes-base.spotify",
+      "position": [
+        -736,
+        80
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "spotifyOAuth2Api": {
+          "id": "qkUTAyNoAwOhiPwI",
+          "name": "Spotify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "track.uri",
+              "field2": "track.uri"
+            }
+          ]
+        },
+        "joinMode": "keepNonMatches",
+        "outputDataFrom": "input1",
+        "options": {}
+      },
+      "id": "399460d5-7ad7-40a0-8baa-57ca28987a33",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        -464,
+        -16
+      ],
+      "typeVersion": 2.1,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "#### Purpose\n\nCompares tracks using `Combine` operation to output **non-matching** Discover Weekly tracks to ensure that duplicates are not appended to the Archive playlist",
+        "height": 354,
+        "width": 262,
+        "color": 7
+      },
+      "id": "34f7f0c1-ef7f-4802-abf0-daf4386d884b",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -560,
+        -176
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "81f9e3a7-eef0-462c-9d82-db894b19a110",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4652995f-fa72-4c54-9cc8-1f4f356ea1a6",
+      "name": "Check if tracks to add is NOT empty",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -208,
+        -16
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "playlist",
+        "id": "={{ $('Switch').all(1).first().json.uri }}",
+        "trackID": "={{ $json.track.uri }}",
+        "additionalFields": {}
+      },
+      "id": "9978f83a-1d3f-4e78-93d6-036e3b9ec411",
+      "name": "Add tracks to Archive playlist",
+      "type": "n8n-nodes-base.spotify",
+      "position": [
+        64,
+        -160
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "spotifyOAuth2Api": {
+          "id": "qkUTAyNoAwOhiPwI",
+          "name": "Spotify account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "CRON": {
+      "main": [
+        [
+          {
+            "node": "Get User's Playlists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Check if tracks to add is NOT empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Get Discover Tracks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Archive Tracks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Archive Tracks": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get Discover Tracks": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User's Playlists": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if tracks to add is NOT empty": {
+      "main": [
+        [
+          {
+            "node": "Add tracks to Archive playlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "91161ae3-756b-4cf3-b3ec-08290a924a7c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aff7fcc7647626747f1467b81396e0369b6e7cf6e08583c45078350218f4cba7"
+  },
+  "id": "AtTZmJzhNp86YvPM",
+  "tags": []
+}
