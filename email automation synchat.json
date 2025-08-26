@@ -1,0 +1,421 @@
+{
+  "name": "email automation synchat",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        144,
+        80
+      ],
+      "id": "a1db9454-545d-46ba-ae40-018b2a57772e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n// 3 dummy leads; replace later with Google Sheets / Phantombuster\nreturn [\n  { json: { first_name: \"Ayesha\", last_name: \"Khan\", company: \"Acme Tech\", email: \"ayesha@acmetech.com\", linkedin_url: \"https://linkedin.com/in/ayesha\", notes: \"Posted about internal comms tooling last week\" } },\n  { json: { first_name: \"Bilal\", last_name: \"Malik\", company: \"Globex\", email: \"bilal@globex.com\", linkedin_url: \"https://linkedin.com/in/bilal\", notes: \"Hiring SDRs; scaling GTM\" } },\n  { json: { first_name: \"Chirag\", last_name: \"Shah\", company: \"Innotech\", email: \"chirag@innotech.com\", linkedin_url: \"https://linkedin.com/in/chirag\", notes: \"Wrote about AI agents\" } },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -48
+      ],
+      "id": "5bffb0a7-cc3c-4f68-a391-18a0937d17c5",
+      "name": "Leads :: Mock"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "25895307-2fc3-4ac7-84cd-53ae8968a2ba",
+              "name": "dry_run",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        544,
+        -48
+      ],
+      "id": "69be4a75-9cf2-4d26-ae20-23cc0dda947c",
+      "name": "Config :: Toggles"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prefer 'notes'; fallback to company\nreturn items.map(it => {\n  const j = it.json;\n  j.signal = j.notes && j.notes.trim() ? j.notes : `Recent work at ${j.company}`;\n  return it;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -48
+      ],
+      "id": "3f31f17b-ff76-4a42-a6f0-a190861b22f2",
+      "name": "Signal :: Pick"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "de75cc52-e5eb-4c99-a98a-6df344f8d0b7",
+              "name": "icebreaker",
+              "value": "=Noticed your work on {{$json[\"signal\"]}}—thought SynChat could help streamline updates.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        960,
+        -48
+      ],
+      "id": "9dc28e51-d1ca-4b3c-8f37-1ee6556068a0",
+      "name": "icebreaker :: LLM placeholder"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3718e6b5-c314-4c23-80a4-924dd8871147",
+              "name": "subject",
+              "value": "=Quick thought for {{$json[\"company\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "6ed42993-3684-459e-831c-bf9c1f343ad0",
+              "name": "body",
+              "value": "=Hi {{$json[\"first_name\"]}},  {{$json[\"icebreaker\"]}}  We’re helping teams like {{$json[\"company\"]}} keep everyone aligned with SynChat (clean async updates, fewer meetings). Worth a quick chat?  Best, {{$json[\"signature\"]}} \n",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        -48
+      ],
+      "id": "a29d89f2-9c44-4e79-86c0-6c4e642e2af3",
+      "name": "Email :: Build"
+    },
+    {
+      "parameters": {
+        "jsCode": "const mailboxes = [\"talal\", \"mohid\"];\nreturn items.map((it, idx) => {\n  it.json.mailbox = mailboxes[idx % mailboxes.length]; // round-robin\n  return it;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -48
+      ],
+      "id": "0e329915-4294-4315-a5e8-c1c159f63859",
+      "name": "Routing :: Mailbox"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulate :: Replies\nreturn $input.all().map((item, idx) => {\n  // Higher demo reply chance so you actually hit the true branch during presentation\n  const baseChance = 0.28; // ~28% initial reply chance\n  const replied = Math.random() < baseChance;\n  item.json.replied = replied;\n\n  if (replied) {\n    item.json.reply_text = \"Yes — sounds interesting. I'm available next week.\";\n    // Demo preferred times (ISO strings). Replace with real slot generation later.\n    item.json.preferred_times = [\n      \"2025-09-02T10:00:00+05:00\",\n      \"2025-09-02T15:00:00+05:00\"\n    ];\n  } else {\n    item.json.reply_text = null;\n    item.json.preferred_times = null;\n  }\n\n  // keep other useful fields for downstream\n  item.json._simulated_at = new Date().toISOString();\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        -48
+      ],
+      "id": "10346056-1b0e-4edb-88b5-f005e9ac737b",
+      "name": "Simulate :: Replies"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "137e2a99-9b39-4edd-be88-16b645ba51a2",
+              "leftValue": "={{ $json[\"replied\"] }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        -48
+      ],
+      "id": "130a599f-3d32-4be7-aa48-02d41d8a5a45",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Schedule :: Demo - create fake calendar event from preferred_times\nreturn $input.all().map(item => {\n  const preferred = item.json.preferred_times && item.json.preferred_times[0];\n  const slot = preferred || new Date(Date.now() + 24*3600*1000).toISOString();\n  item.json.scheduled_at = slot;\n  item.json.calendar_link = \"https://meet.example/demo/\" + Math.random().toString(36).slice(2,8);\n  item.json.scheduled_by = item.json.mailbox || \"talal\";\n  item.json.scheduled_note = item.json.reply_text || \"Auto-scheduled from demo\";\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        -224
+      ],
+      "id": "1670c777-f1a6-44b5-a4f6-226d1db4e056",
+      "name": "Schedule :: Demo"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6980f1d3-ff02-4b82-aebd-3981608fd3bd",
+              "name": "=email",
+              "value": "={{$json[\"email\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "6832a5b7-fdd6-431d-834f-50024c82f7d2",
+              "name": "first_name",
+              "value": "={{$json[\"first_name\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "631c7a7e-4ab0-45ed-a70e-a56d3f3524f1",
+              "name": "scheduled_at",
+              "value": "={{$json[\"scheduled_at\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "dea3c410-e4b0-476f-9b22-2e5519fd575a",
+              "name": "calendar_link",
+              "value": "={{$json[\"calendar_link\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "6e50e3be-aa4a-4321-98fc-53abeedb5955",
+              "name": "by",
+              "value": "={{$json[\"scheduled_by\"]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        -224
+      ],
+      "id": "4afb4979-1f92-470f-9744-b02657577167",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        112
+      ],
+      "id": "2c0a7cdd-ed2e-43ef-84a0-79e7108525f2",
+      "name": "Wait",
+      "webhookId": "c42c9ca5-b59e-44fe-bf71-27407145ae54"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dbe9cf14-6d6f-4edf-a5a9-9758aeb004c2",
+              "name": "subject",
+              "value": "=Follow up on SynChat for {{$json[\"company\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "3409fecb-d97b-4005-9b8c-0060cae148ed",
+              "name": "body",
+              "value": "=Hi {{$json[\"first_name\"]}},  Just checking in on my earlier note — would love 10 minutes to show SynChat can cut down your meeting load.  If you’re open, here are a couple quick times: {{$json[\"preferred_times\"] ? $json[\"preferred_times\"].join('\\n') : 'Would you like me to propose times?'}}  Best, {{$json[\"mailbox\"]}} @ SynChat",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2208,
+        112
+      ],
+      "id": "e5171716-b17c-4950-8c1a-5c86879e1199",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Leads :: Mock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leads :: Mock": {
+      "main": [
+        [
+          {
+            "node": "Config :: Toggles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config :: Toggles": {
+      "main": [
+        [
+          {
+            "node": "Signal :: Pick",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Signal :: Pick": {
+      "main": [
+        [
+          {
+            "node": "icebreaker :: LLM placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "icebreaker :: LLM placeholder": {
+      "main": [
+        [
+          {
+            "node": "Email :: Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email :: Build": {
+      "main": [
+        [
+          {
+            "node": "Routing :: Mailbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing :: Mailbox": {
+      "main": [
+        [
+          {
+            "node": "Simulate :: Replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulate :: Replies": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Schedule :: Demo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule :: Demo": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "eb21ba80-17cb-4d7f-b1d4-e3ac2faedbb6",
+  "meta": {
+    "instanceId": "aff7fcc7647626747f1467b81396e0369b6e7cf6e08583c45078350218f4cba7"
+  },
+  "id": "Kx4J7t22ZruhUyvZ",
+  "tags": []
+}
